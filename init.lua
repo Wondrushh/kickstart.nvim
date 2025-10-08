@@ -169,6 +169,10 @@ vim.o.confirm = true
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
+-- Ondra keymaps
+vim.keymap.set('n', '<C-_>', 'gcc', { remap = true, desc = 'Comment out line' })
+vim.keymap.set('v', '<C-_>', 'gc', { remap = true, desc = 'Comment out selection' })
+vim.keymap.set('n', '<leader>e', '<Cmd>Neotree<CR>')
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
@@ -493,6 +497,20 @@ require('lazy').setup({
       'saghen/blink.cmp',
     },
     config = function()
+      -- VIM types
+      -- vim.filetype.add {
+      --   extension = {
+      --     jinja = 'jinja',
+      --     jinja2 = 'jinja',
+      --     j2 = 'jinja',
+      --     py = 'python',
+      --   },
+      --   -- pattern = {
+      --   --   ['.*/templates/.*%.html'] = 'jinja',
+      --   --   ['.*/template/.*%.html'] = 'jinja',
+      --   --   ['.*/jinja/.*%.html'] = 'jinja',
+      --   -- },
+      -- }
       -- Brief aside: **What is LSP?**
       --
       -- LSP is an initialism you've probably heard, but might not understand what it is.
@@ -538,6 +556,7 @@ require('lazy').setup({
           -- Rename the variable under your cursor.
           --  Most Language Servers support renaming across files, etc.
           map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+          map('<leader>f', vim.lsp.buf.format, '[F]ormat code')
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
@@ -683,13 +702,42 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         --
+        -- html = {
+        --   -- format = {
+        --   --   templating = true,
+        --   -- },
+        --   -- hover = {
+        --   --   documentation = true,
+        --   --   references = true,
+        --   -- },
+        --   filetypes = { 'htmldjango', 'jinja', 'html' },
+        -- },
+
         ruff = {
           init_options = {
-            settings = {
-              
-            }
-          }
-        }
+            settings = {},
+          },
+        },
+
+        jinja_lsp = {
+          -- filetypes = { 'jinja', 'rust', 'python', 'html', 'htmldjango' },
+        },
+
+        pyright = {
+          capabilities = (function()
+            local capabilities = vim.lsp.protocol.make_client_capabilities()
+            capabilities.textDocument.publishDiagnostics.tagSupport.valueSet = { 2 }
+            return capabilities
+          end)(),
+          settings = {
+            python = {
+              analysis = {
+                typeCheckingMode = 'off',
+              },
+            },
+          },
+        },
+
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -726,6 +774,7 @@ require('lazy').setup({
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
+        automatic_enable = true,
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
         automatic_installation = false,
         handlers = {
@@ -735,10 +784,16 @@ require('lazy').setup({
             -- by the server configuration above. Useful when disabling
             -- certain features of an LSP (for example, turning off formatting for ts_ls)
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
+            vim.lsp.config(server_name, server)
+            vim.lsp.enable(server_name)
+            -- require('lspconfig')[server_name].setup(server)
           end,
         },
       }
+      -- Ondra: Enable all of the set up LSPs
+      for server_name, server_settings in pairs(servers) do
+        vim.lsp.config(server_name, server_settings)
+      end
     end,
   },
 
@@ -762,7 +817,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true, cpp = true, python = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -950,7 +1005,22 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'python',
+        'jinja',
+        'htmldjango',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -968,6 +1038,56 @@ require('lazy').setup({
     --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+  },
+  { -- Ondra: Neovim DAP for debugging
+    'mfussenegger/nvim-dap',
+    lazy = true,
+    keys = {
+      {
+        '<leader>db',
+        function()
+          require('dap').toggle_breakpoint()
+        end,
+        desc = 'Toggle Breakpoint',
+      },
+
+      {
+        '<leader>dc',
+        function()
+          require('dap').continue()
+        end,
+        desc = 'Continue',
+      },
+
+      {
+        '<leader>dC',
+        function()
+          require('dap').run_to_cursor()
+        end,
+        desc = 'Run to Cursor',
+      },
+
+      {
+        '<leader>dT',
+        function()
+          require('dap').terminate()
+        end,
+        desc = 'Terminate',
+      },
+    },
+  },
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'MunifTanjim/nui.nvim',
+      'nvim-tree/nvim-web-devicons', -- optional, but recommended
+    },
+    lazy = false, -- neo-tree will lazily load itself
+    opts = {
+      enable_git_status = true,
+    },
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
