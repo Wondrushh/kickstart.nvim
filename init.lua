@@ -172,7 +172,7 @@ vim.o.confirm = true
 -- Ondra keymaps
 vim.keymap.set('n', '<C-_>', 'gcc', { remap = true, desc = 'Comment out line' })
 vim.keymap.set('v', '<C-_>', 'gc', { remap = true, desc = 'Comment out selection' })
-vim.keymap.set('n', '<leader>e', '<Cmd>Neotree<CR>')
+vim.keymap.set('n', '<leader>e', '<Cmd>Neotree<CR>', { desc = 'Open file treeview' })
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
@@ -251,7 +251,9 @@ rtp:prepend(lazypath)
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
-  'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+  {
+    'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+  },
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
@@ -498,19 +500,22 @@ require('lazy').setup({
     },
     config = function()
       -- VIM types
-      -- vim.filetype.add {
-      --   extension = {
-      --     jinja = 'jinja',
-      --     jinja2 = 'jinja',
-      --     j2 = 'jinja',
-      --     py = 'python',
-      --   },
-      --   -- pattern = {
-      --   --   ['.*/templates/.*%.html'] = 'jinja',
-      --   --   ['.*/template/.*%.html'] = 'jinja',
-      --   --   ['.*/jinja/.*%.html'] = 'jinja',
-      --   -- },
-      -- }
+      vim.filetype.add {
+        extension = {
+          jinja = 'jinja',
+          jinja2 = 'jinja',
+          j2 = 'jinja',
+          py = 'python',
+        },
+        pattern = {
+          ['.*/templates/.*%.html'] = 'jinja',
+          ['.*/template/.*%.html'] = 'jinja',
+          ['.*/jinja/.*%.html'] = 'jinja',
+          -- ['.*/templates/.*%.html'] = 'html',
+          -- ['.*/template/.*%.html'] = 'html',
+          -- ['.*/jinja/.*%.html'] = 'html',
+        },
+      }
       -- Brief aside: **What is LSP?**
       --
       -- LSP is an initialism you've probably heard, but might not understand what it is.
@@ -702,16 +707,9 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         --
-        -- html = {
-        --   -- format = {
-        --   --   templating = true,
-        --   -- },
-        --   -- hover = {
-        --   --   documentation = true,
-        --   --   references = true,
-        --   -- },
-        --   filetypes = { 'htmldjango', 'jinja', 'html' },
-        -- },
+        html = {
+          -- filetypes = { 'jinja', 'html' },
+        },
 
         ruff = {
           init_options = {
@@ -720,7 +718,7 @@ require('lazy').setup({
         },
 
         jinja_lsp = {
-          -- filetypes = { 'jinja', 'rust', 'python', 'html', 'htmldjango' },
+          filetypes = { 'jinja', 'rust', 'python', 'html', 'htmldjango' },
         },
 
         pyright = {
@@ -733,6 +731,7 @@ require('lazy').setup({
             python = {
               analysis = {
                 typeCheckingMode = 'off',
+                autoImportCompletions = true,
               },
             },
           },
@@ -774,7 +773,7 @@ require('lazy').setup({
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
-        automatic_enable = true,
+        -- automatic_enable = true,
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
         automatic_installation = false,
         handlers = {
@@ -793,7 +792,10 @@ require('lazy').setup({
       -- Ondra: Enable all of the set up LSPs
       for server_name, server_settings in pairs(servers) do
         vim.lsp.config(server_name, server_settings)
+        vim.lsp.enable(server_name)
       end
+      require('guess-indent').setup {}
+      -- vim.treesitter.language.register('htmldjango', 'jinja') -- if &ft is "jinja"
     end,
   },
 
@@ -817,7 +819,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true, python = true }
+        local disable_filetypes = { c = true, cpp = true, python = true, html = true, css = true, jinja = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -836,6 +838,13 @@ require('lazy').setup({
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
       },
     },
+  },
+
+  {
+    'saghen/blink.compat',
+    version = '*',
+    lazy = true, -- Automatically loads when required by blink.cmp
+    opts = {},
   },
 
   { -- Autocompletion
@@ -915,9 +924,10 @@ require('lazy').setup({
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'lazydev' },
+        default = { 'lsp', 'path', 'snippets', 'lazydev', 'html-css' },
         providers = {
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
+          ['html-css'] = { name = 'html-css', module = 'blink.compat.source' },
         },
       },
 
@@ -935,6 +945,7 @@ require('lazy').setup({
       -- Shows a signature help window while you type arguments for a function
       signature = { enabled = true },
     },
+    opts_extend = { 'sources.default' },
   },
 
   { -- You can easily change to a different colorscheme.
@@ -1010,7 +1021,9 @@ require('lazy').setup({
         'c',
         'diff',
         'html',
+        'css',
         'python',
+        'javascript',
         'jinja',
         'htmldjango',
         'lua',
@@ -1025,6 +1038,7 @@ require('lazy').setup({
       auto_install = true,
       highlight = {
         enable = true,
+        -- disable = { 'jinja' },
         -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
         --  If you are experiencing weird indenting issues, add the language to
         --  the list of additional_vim_regex_highlighting and disabled languages for indent.
@@ -1074,8 +1088,109 @@ require('lazy').setup({
         end,
         desc = 'Terminate',
       },
+      {
+        '<leader>dr',
+        function()
+          require('dap').repl.toggle()
+        end,
+        desc = 'Toggle REPL',
+      },
+      {
+        '<S-down>',
+        function()
+          require('dap').step_over()
+        end,
+        desc = 'Step over',
+      },
+      {
+        '<S-right>',
+        function()
+          require('dap').step_into()
+        end,
+        desc = 'Step into',
+      },
+      {
+        '<S-right>',
+        function()
+          require('dap').step_out()
+        end,
+        desc = 'Step out',
+      },
     },
   },
+  {
+    'mfussenegger/nvim-dap-python',
+    keys = {
+      -- **Test-Related Key Mappings**
+      -- {
+      --   mode = 'n',
+      --   '<leader>dm',
+      --   function()
+      --     require('dap-python').test_method()
+      --   end,
+      --   desc = 'Debug Test Method',
+      -- },
+      -- {
+      --   mode = 'n',
+      --   '<leader>dc',
+      --   function()
+      --     require('dap-python').test_class()
+      --   end,
+      --   desc = 'Debug Test Class',
+      -- },
+      -- **File-Related Key Mappings**
+      -- {
+      --   mode = 'n',
+      --   '<leader>df',
+      --   function()
+      --     require('dap-python').debug_file()
+      --   end,
+      --   desc = 'Debug Python File',
+      -- },
+
+      -- **Function-Related Key Mappings**
+      -- {
+      --   mode = 'n',
+      --   '<leader>du',
+      --   function()
+      --     -- Custom function to debug the function under the cursor
+      --     local dap_python = require 'dap-python'
+      --     local utils = require 'dap-python.utils'
+      --     local path = vim.fn.expand '%:p'
+      --     local row = vim.fn.line '.'
+      --     local func_name = utils.get_func_at_line(path, row)
+      --     if func_name then
+      --       dap_python.debug_at_point()
+      --     else
+      --       print 'No function found under cursor.'
+      --     end
+      --   end,
+      --   desc = 'Debug Function Under Cursor',
+      -- },
+
+      -- **Class-Related Key Mappings**
+      -- {
+      --   mode = 'n',
+      --   '<leader>dk',
+      --   function()
+      --     -- Custom function to debug the class under the cursor
+      --     local dap_python = require 'dap-python'
+      --     local utils = require 'dap-python.utils'
+      --     local path = vim.fn.expand '%:p'
+      --     local row = vim.fn.line '.'
+      --     local class_name = utils.get_class_at_line(path, row)
+      --     if class_name then
+      --       dap_python.debug_at_point()
+      --     else
+      --       print 'No class found under cursor.'
+      --     end
+      --   end,
+      --   desc = 'Debug Class Under Cursor',
+      -- },
+    },
+    config = function() end,
+  },
+
   {
     'nvim-neo-tree/neo-tree.nvim',
     branch = 'v3.x',
@@ -1087,6 +1202,44 @@ require('lazy').setup({
     lazy = false, -- neo-tree will lazily load itself
     opts = {
       enable_git_status = true,
+    },
+  },
+  {
+    'Jezda1337/nvim-html-css',
+    dependencies = { 'saghen/blink.cmp', 'nvim-treesitter/nvim-treesitter' }, -- Use this if you're using blink.cmp
+    opts = {
+      enable_on = { -- Example file types
+        'html',
+        'htmldjango',
+        'tsx',
+        'jsx',
+        'erb',
+        'svelte',
+        'vue',
+        'blade',
+        'php',
+        'templ',
+        'astro',
+      },
+      handlers = {
+        definition = {
+          bind = 'gd',
+        },
+        hover = {
+          bind = 'K',
+          wrap = true,
+          border = 'none',
+          position = 'cursor',
+        },
+      },
+      documentation = {
+        auto_show = true,
+      },
+      style_sheets = {
+        'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+        'https://cdnjs.cloudflare.com/ajax/libs/bulma/1.0.3/css/bulma.min.css',
+        './index.css', -- `./` refers to the current working directory.
+      },
     },
   },
 
@@ -1137,6 +1290,10 @@ require('lazy').setup({
     },
   },
 })
+require('dap-python').setup 'python3'
+require('dap-python').test_runner = 'pytest'
+require('dap').set_exception_breakpoints {}
+vim.fn.sign_define('DapBreakpoint', { text = '🛑', texthl = '', linehl = '', numhl = '' })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
