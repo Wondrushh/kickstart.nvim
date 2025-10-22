@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -170,6 +170,8 @@ vim.o.confirm = true
 --  See `:help vim.keymap.set()`
 
 -- Ondra keymaps
+vim.keymap.set('n', '<C-/>', 'gcc', { remap = true, desc = 'Comment out line' })
+vim.keymap.set('v', '<C-/>', 'gc', { remap = true, desc = 'Comment out selection' })
 vim.keymap.set('n', '<C-_>', 'gcc', { remap = true, desc = 'Comment out line' })
 vim.keymap.set('v', '<C-_>', 'gc', { remap = true, desc = 'Comment out selection' })
 vim.keymap.set('n', '<leader>e', '<Cmd>Neotree<CR>', { desc = 'Open file treeview' })
@@ -707,8 +709,17 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         --
+        --
+        eslint = {},
+        cssls = {
+          filetypes = { 'css', 'scss', 'sass' },
+        },
+        jinja_lsp = {
+          filetypes = { 'jinja', 'rust', 'python', 'html', 'htmldjango' },
+        },
+
         html = {
-          -- filetypes = { 'jinja', 'html' },
+          filetypes = { 'jinja', 'html', 'javascript' },
         },
 
         ruff = {
@@ -717,20 +728,33 @@ require('lazy').setup({
           },
         },
 
-        jinja_lsp = {
-          filetypes = { 'jinja', 'rust', 'python', 'html', 'htmldjango' },
-        },
+        -- pyright = {
+        --   capabilities = (function()
+        --     local capabilities = vim.lsp.protocol.make_client_capabilities()
+        --     capabilities.textDocument.publishDiagnostics.tagSupport.valueSet = { 2 }
+        --     return capabilities
+        --   end)(),
+        --   settings = {
+        --     python = {
+        --       analysis = {
+        --         typeCheckingMode = 'off',
+        --         autoImportCompletions = true,
+        --       },
+        --     },
+        --   },
+        -- },
 
-        pyright = {
+        basedpyright = {
+          -- capabilities = capabilities,
           capabilities = (function()
             local capabilities = vim.lsp.protocol.make_client_capabilities()
             capabilities.textDocument.publishDiagnostics.tagSupport.valueSet = { 2 }
             return capabilities
           end)(),
           settings = {
-            python = {
+            basedpyright = {
               analysis = {
-                typeCheckingMode = 'off',
+                typeCheckingMode = 'basic',
                 autoImportCompletions = true,
               },
             },
@@ -795,7 +819,6 @@ require('lazy').setup({
         vim.lsp.enable(server_name)
       end
       require('guess-indent').setup {}
-      -- vim.treesitter.language.register('htmldjango', 'jinja') -- if &ft is "jinja"
     end,
   },
 
@@ -958,7 +981,10 @@ require('lazy').setup({
     config = function()
       ---@diagnostic disable-next-line: missing-fields
       require('tokyonight').setup {
+        transparent = true,
         styles = {
+          sidebars = 'transparent',
+          floats = 'transparent',
           comments = { italic = false }, -- Disable italics in comments
         },
       }
@@ -972,6 +998,8 @@ require('lazy').setup({
 
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
+
+  { 'rcarriga/nvim-dap-ui', dependencies = { 'mfussenegger/nvim-dap', 'nvim-neotest/nvim-nio' } },
 
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
@@ -1053,8 +1081,16 @@ require('lazy').setup({
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
+  {
+    'nvim-treesitter/nvim-treesitter-context',
+    opts = { enable = true },
+  },
   { -- Ondra: Neovim DAP for debugging
     'mfussenegger/nvim-dap',
+    dependencies = {
+      -- Runs preLaunchTask / postDebugTask if present
+      { 'stevearc/overseer.nvim', config = true },
+    },
     lazy = true,
     keys = {
       {
@@ -1089,12 +1125,27 @@ require('lazy').setup({
         desc = 'Terminate',
       },
       {
-        '<leader>dr',
+        '<leader>ds',
         function()
-          require('dap').repl.toggle()
+          local widgets = require 'dap.ui.widgets'
+          widgets.centered_float(widgets.scopes, { border = 'rounded' })
         end,
-        desc = 'Toggle REPL',
+        desc = 'DAP Scopes',
       },
+      {
+        '<leader>di',
+        function()
+          require('dap.ui.widgets').hover(nil, { border = 'rounded' })
+        end,
+        desc = 'DAP Hover',
+      },
+      -- {
+      --   '<leader>dr',
+      --   function()
+      --     require('dap').repl.toggle()
+      --   end,
+      --   desc = 'Toggle REPL',
+      -- },
       {
         '<S-down>',
         function()
@@ -1212,6 +1263,7 @@ require('lazy').setup({
         'html',
         'htmldjango',
         'tsx',
+        'jinja',
         'jsx',
         'erb',
         'svelte',
@@ -1236,11 +1288,15 @@ require('lazy').setup({
         auto_show = true,
       },
       style_sheets = {
-        'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+        -- 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
         'https://cdnjs.cloudflare.com/ajax/libs/bulma/1.0.3/css/bulma.min.css',
-        './index.css', -- `./` refers to the current working directory.
+        -- './index.css', -- `./` refers to the current working directory.
       },
     },
+  },
+  -- Autoclose brackets
+  {
+    'm4xshen/autoclose.nvim',
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
@@ -1290,10 +1346,32 @@ require('lazy').setup({
     },
   },
 })
+
 require('dap-python').setup 'python3'
+require('autoclose').setup()
 require('dap-python').test_runner = 'pytest'
 require('dap').set_exception_breakpoints {}
+require('dapui').setup()
+local dap = require 'dap'
+local dapui = require 'dapui'
+-- attach listeners to automatically open DAP UI on debug start
+dap.listeners.before.attach.dapui_config = function()
+  dapui.open()
+end
+dap.listeners.before.launch.dapui_config = function()
+  dapui.open()
+end
+dap.listeners.before.event_terminated.dapui_config = function()
+  dapui.close()
+end
+dap.listeners.before.event_exited.dapui_config = function()
+  dapui.close()
+end
+
+vim.keymap.set('n', '<leader>dn', '<Cmd>DapNew<CR>', { desc = 'Start new session...' })
+vim.keymap.set('n', '<leader>dr', dapui.toggle, { desc = 'Toggle DAP UI' })
 vim.fn.sign_define('DapBreakpoint', { text = '🛑', texthl = '', linehl = '', numhl = '' })
+vim.fn.sign_define('DapStopped', { text = '👉', texthl = '', linehl = '', numhl = '' })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
