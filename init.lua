@@ -175,6 +175,7 @@ vim.keymap.set('v', '<C-/>', 'gc', { remap = true, desc = 'Comment out selection
 vim.keymap.set('n', '<C-_>', 'gcc', { remap = true, desc = 'Comment out line' })
 vim.keymap.set('v', '<C-_>', 'gc', { remap = true, desc = 'Comment out selection' })
 vim.keymap.set('n', '<leader>e', '<Cmd>Neotree<CR>', { desc = 'Open file treeview' })
+vim.keymap.set('n', '<leader>dd', vim.diagnostic.open_float, { desc = 'Open diagnostic in floating window' })
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
@@ -240,6 +241,9 @@ end
 local rtp = vim.opt.rtp
 rtp:prepend(lazypath)
 
+local function is_dap_buffer()
+  return require('cmp_dap').is_dap_buffer()
+end
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -385,6 +389,13 @@ require('lazy').setup({
         end,
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
+      -- Passing arguments to rg
+      {
+        'nvim-telescope/telescope-live-grep-args.nvim',
+        -- This will not install any breaking changes.
+        -- For major updates, this must be adjusted manually.
+        version = '^1.0.0',
+      },
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
@@ -431,6 +442,7 @@ require('lazy').setup({
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
+      pcall(require('telescope').load_extension, 'live_grep_args')
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
@@ -439,7 +451,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
-      vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
+      vim.keymap.set('n', '<leader>sg', ":lua require('telescope').extensions.live_grep_args.live_grep_args()<CR>", { desc = '[S]earch by [G]rep' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
@@ -563,7 +575,13 @@ require('lazy').setup({
           -- Rename the variable under your cursor.
           --  Most Language Servers support renaming across files, etc.
           map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
-          map('<leader>f', vim.lsp.buf.format, '[F]ormat code')
+          map('<leader>f', function()
+            vim.lsp.buf.format {
+              filter = function(client)
+                return client.name ~= 'ts_ls'
+              end,
+            }
+          end, '[F]ormat code')
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
@@ -707,7 +725,7 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
+        ts_ls = {},
         --
         --
         eslint = {},
@@ -842,7 +860,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true, python = true, html = true, css = true, jinja = true }
+        local disable_filetypes = { c = true, cpp = true, python = true, html = true, css = true, jinja = true, javascript = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -902,6 +920,7 @@ require('lazy').setup({
         opts = {},
       },
       'folke/lazydev.nvim',
+      'rcarriga/cmp-dap',
     },
     --- @module 'blink.cmp'
     --- @type blink.cmp.Config
@@ -933,6 +952,9 @@ require('lazy').setup({
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
       },
+      enabled = function()
+        return vim.bo.buftype ~= 'prompt' or is_dap_buffer()
+      end,
 
       appearance = {
         -- 'mono' (default) for 'Nerd Font Mono' or 'normal' for 'Nerd Font'
@@ -947,10 +969,17 @@ require('lazy').setup({
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'lazydev', 'html-css' },
+        default = function()
+          if is_dap_buffer() then
+            return { 'dap', 'snippets', 'buffer' }
+          else
+            return { 'lsp', 'path', 'snippets', 'lazydev', 'html-css' }
+          end
+        end,
         providers = {
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
           ['html-css'] = { name = 'html-css', module = 'blink.compat.source' },
+          dap = { name = 'dap', module = 'blink.compat.source' },
         },
       },
 
@@ -1000,6 +1029,19 @@ require('lazy').setup({
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
   { 'rcarriga/nvim-dap-ui', dependencies = { 'mfussenegger/nvim-dap', 'nvim-neotest/nvim-nio' } },
+  -- nvim-dap-ui alternative
+  {
+    'igorlfs/nvim-dap-view',
+    opts = {
+      winbar = {
+        default_section = 'repl',
+        controls = {
+          enabled = true,
+        },
+      },
+      auto_toggle = true,
+    },
+  },
 
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
@@ -1084,6 +1126,15 @@ require('lazy').setup({
   {
     'nvim-treesitter/nvim-treesitter-context',
     opts = { enable = true },
+  },
+  { -- Ondra: Refactoring
+    'ThePrimeagen/refactoring.nvim',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-treesitter/nvim-treesitter',
+    },
+    lazy = false,
+    opts = {},
   },
   { -- Ondra: Neovim DAP for debugging
     'mfussenegger/nvim-dap',
@@ -1241,6 +1292,11 @@ require('lazy').setup({
     },
     config = function() end,
   },
+  {
+    'mrcjkb/rustaceanvim',
+    version = '^6', -- Recommended
+    lazy = false, -- This plugin is already lazy
+  },
 
   {
     'nvim-neo-tree/neo-tree.nvim',
@@ -1298,6 +1354,10 @@ require('lazy').setup({
   {
     'm4xshen/autoclose.nvim',
   },
+  -- Automatically close HTML tags
+  {
+    'windwp/nvim-ts-autotag',
+  },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
@@ -1352,24 +1412,36 @@ require('autoclose').setup()
 require('dap-python').test_runner = 'pytest'
 require('dap').set_exception_breakpoints {}
 require('dapui').setup()
+require('refactoring').setup()
+require('nvim-ts-autotag').setup {
+  opts = {
+    -- Defaults
+    enable_close = true, -- Auto close tags
+    enable_rename = true, -- Auto rename pairs of tags
+    enable_close_on_slash = false, -- Auto close on trailing </
+  },
+}
 local dap = require 'dap'
-local dapui = require 'dapui'
+-- local dapui = require 'dapui'
 -- attach listeners to automatically open DAP UI on debug start
-dap.listeners.before.attach.dapui_config = function()
-  dapui.open()
-end
-dap.listeners.before.launch.dapui_config = function()
-  dapui.open()
-end
-dap.listeners.before.event_terminated.dapui_config = function()
-  dapui.close()
-end
-dap.listeners.before.event_exited.dapui_config = function()
-  dapui.close()
-end
+-- dap.listeners.before.attach.dapui_config = function()
+--   dapui.open()
+-- end
+-- dap.listeners.before.launch.dapui_config = function()
+--   dapui.open()
+-- end
+-- dap.listeners.before.event_terminated.dapui_config = function()
+--   dapui.close()
+-- end
+-- dap.listeners.before.event_exited.dapui_config = function()
+--   dapui.close()
+-- end
 
 vim.keymap.set('n', '<leader>dn', '<Cmd>DapNew<CR>', { desc = 'Start new session...' })
-vim.keymap.set('n', '<leader>dr', dapui.toggle, { desc = 'Toggle DAP UI' })
+vim.keymap.set('n', '<leader>dr', function()
+  -- dapui.toggle { reset = true }
+  require('dap-view').toggle()
+end, { desc = 'Toggle DAP UI' })
 vim.fn.sign_define('DapBreakpoint', { text = '🛑', texthl = '', linehl = '', numhl = '' })
 vim.fn.sign_define('DapStopped', { text = '👉', texthl = '', linehl = '', numhl = '' })
 
