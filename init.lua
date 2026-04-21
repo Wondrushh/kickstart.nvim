@@ -718,7 +718,20 @@ require('lazy').setup({
         -- clangd = {},
         -- gopls = {},
         -- pyright = {},
-        -- rust_analyzer = {},
+        rust_analyzer = {
+          cargo = {
+            features = 'all', -- Enable all features
+          },
+          procMacro = {
+            ignored = {
+              leptos_macro = {
+                -- optional: --
+                -- 'component',
+                'server',
+              },
+            },
+          },
+        },
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
@@ -1043,6 +1056,33 @@ require('lazy').setup({
     },
   },
 
+  {
+    'kndndrj/nvim-dbee',
+    dependencies = {
+      'MunifTanjim/nui.nvim',
+    },
+    build = function()
+      -- Install tries to automatically detect the install method.
+      -- if it fails, try calling it with one of these parameters:
+      --    "curl", "wget", "bitsadmin", "go"
+      require('dbee').install()
+    end,
+    config = function()
+      require('dbee').setup {
+        sources = {
+          require('dbee.sources').MemorySource:new {
+            {
+              id = 'zeta_test',
+              name = 'zeta_test',
+              type = 'postgres',
+              url = 'postgres://db_operator:prd@localhost:5432/zeta_test?sslmode=disable',
+            },
+          },
+        },
+      }
+    end,
+  },
+
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
@@ -1311,6 +1351,18 @@ require('lazy').setup({
       enable_git_status = true,
     },
   },
+  -- symbols outline
+  {
+    'hedyhli/outline.nvim',
+    lazy = true,
+    cmd = { 'Outline', 'OutlineOpen' },
+    keys = { -- Example mapping to toggle outline
+      { '<leader>o', '<cmd>Outline<CR>', desc = 'Toggle outline' },
+    },
+    opts = {
+      -- Your setup opts here
+    },
+  },
   {
     'Jezda1337/nvim-html-css',
     dependencies = { 'saghen/blink.cmp', 'nvim-treesitter/nvim-treesitter' }, -- Use this if you're using blink.cmp
@@ -1412,7 +1464,7 @@ require('autoclose').setup()
 require('dap-python').test_runner = 'pytest'
 require('dap').set_exception_breakpoints {}
 require('dapui').setup()
-require('refactoring').setup()
+require('refactoring').setup {}
 require('nvim-ts-autotag').setup {
   opts = {
     -- Defaults
@@ -1445,5 +1497,6 @@ end, { desc = 'Toggle DAP UI' })
 vim.fn.sign_define('DapBreakpoint', { text = '🛑', texthl = '', linehl = '', numhl = '' })
 vim.fn.sign_define('DapStopped', { text = '👉', texthl = '', linehl = '', numhl = '' })
 
+vim.keymap.set('n', '<leader>b', require('dbee').toggle, { desc = 'Open database view' })
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
