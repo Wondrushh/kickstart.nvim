@@ -714,6 +714,17 @@ require('lazy').setup({
       --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
+
+      local vue_language_server_path =
+        vim.fn.stdpath('data')
+        .. '/mason/packages/vue-language-server/node_modules/@vue/language-server'
+      
+      local vue_plugin = {
+        name = '@vue/typescript-plugin',
+        location = vue_language_server_path,
+        languages = { 'vue' },
+        configNamespace = 'typescript',
+      }
       local servers = {
         -- clangd = {},
         -- gopls = {},
@@ -741,8 +752,28 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         vtsls = {
-          filetypes = { 'javascript', 'vue' },
+          filetypes = {
+            'javascript',
+            'javascriptreact',
+            'typescript',
+            'typescriptreact',
+            'vue',
+          },
+        
+          settings = {
+            vtsls = {
+              autoUseWorkspaceTsdk = true,
+        
+              tsserver = {
+                globalPlugins = {
+                  vue_plugin,
+                },
+              },
+            },
+          },
         },
+        
+        vue_ls = {},
         --
         --
         eslint = {
