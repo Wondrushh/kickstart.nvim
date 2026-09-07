@@ -751,25 +751,19 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
-        vtsls = {
+        ts_ls = {
+          init_options = {
+            plugins = {
+              vue_plugin,
+            },
+          },
+      
           filetypes = {
             'javascript',
             'javascriptreact',
             'typescript',
             'typescriptreact',
             'vue',
-          },
-        
-          settings = {
-            vtsls = {
-              autoUseWorkspaceTsdk = true,
-        
-              tsserver = {
-                globalPlugins = {
-                  vue_plugin,
-                },
-              },
-            },
           },
         },
         
@@ -872,6 +866,8 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
         'tflint',
+        'typescript-language-server',
+        'vue-language-server',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -943,7 +939,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true, python = true, html = true, css = true, jinja = true, javascript = true }
+        local disable_filetypes = { c = true, cpp = true, python = true, html = true, css = true, jinja = true, javascript = true, vue = true, typescript = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -959,8 +955,10 @@ require('lazy').setup({
         -- python = { "isort", "black" },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
-      },
+        javascript = { "prettierd", "prettier", stop_after_first = true },
+        vue = { "prettierd", "prettier", stop_after_first = true },
+        typescript = { "prettierd", "prettier", stop_after_first = true },
+        },
     },
   },
 
