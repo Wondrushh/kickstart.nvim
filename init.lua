@@ -722,6 +722,7 @@ require('lazy').setup({
           cargo = {
             features = 'all', -- Enable all features
           },
+          filetypes = { 'rust' },
           procMacro = {
             ignored = {
               leptos_macro = {
@@ -738,19 +739,32 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
-        ts_ls = {},
+        -- ts_ls = {},
+        vtsls = {
+          filetypes = { 'javascript', 'vue' },
+        },
         --
         --
-        eslint = {},
+        eslint = {
+          filetypes = { 'javascript' },
+        },
         cssls = {
           filetypes = { 'css', 'scss', 'sass' },
         },
         jinja_lsp = {
-          filetypes = { 'jinja', 'rust', 'python', 'html', 'htmldjango' },
+          filetypes = { 'jinja' },
         },
 
         html = {
-          filetypes = { 'jinja', 'html', 'javascript' },
+          filetypes = { 'jinja', 'html' },
+          init_options = {
+            embeddedLanguages = {
+              css = true,
+              javascript = true,
+              jinja = true,
+              html_django = true,
+            },
+          },
         },
 
         ruff = {
@@ -758,6 +772,7 @@ require('lazy').setup({
             settings = {},
           },
         },
+        terraformls = {},
 
         -- pyright = {
         --   capabilities = (function()
@@ -776,6 +791,7 @@ require('lazy').setup({
         -- },
 
         basedpyright = {
+          filetypes = { 'python' },
           -- capabilities = capabilities,
           capabilities = (function()
             local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -824,6 +840,7 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'tflint',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -852,7 +869,29 @@ require('lazy').setup({
       require('guess-indent').setup {}
     end,
   },
+  -- Jump between HTML tags
+  {
+    'andymass/vim-matchup',
+    init = function()
+      -- modify your configuration vars here
+      -- vim.g.matchup_treesitter_stopline = 500
 
+      -- or call the setup function provided as a helper. It defines the
+      -- configuration vars for you
+      require('match-up').setup {
+        treesitter = {
+          stopline = 500,
+        },
+      }
+    end,
+    -- or use the `opts` mechanism built into `lazy.nvim`. It calls
+    -- `require('match-up').setup` under the hood
+    ---@type matchup.Config
+    -- opts = {
+    --   treesitter = {
+    --     stopline = 500,
+    --   },
+  },
   { -- Autoformat
     'stevearc/conform.nvim',
     event = { 'BufWritePre' },
@@ -1010,7 +1049,7 @@ require('lazy').setup({
       -- Shows a signature help window while you type arguments for a function
       signature = { enabled = true },
     },
-    opts_extend = { 'sources.default' },
+    -- opts_extend = { 'sources.default' },
   },
 
   { -- You can easily change to a different colorscheme.
@@ -1136,6 +1175,8 @@ require('lazy').setup({
         'javascript',
         'jinja',
         'htmldjango',
+        'hcl',
+        'terraform',
         'lua',
         'luadoc',
         'markdown',
@@ -1167,15 +1208,15 @@ require('lazy').setup({
     'nvim-treesitter/nvim-treesitter-context',
     opts = { enable = true },
   },
-  { -- Ondra: Refactoring
-    'ThePrimeagen/refactoring.nvim',
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-      'nvim-treesitter/nvim-treesitter',
-    },
-    lazy = false,
-    opts = {},
-  },
+  -- { -- Ondra: Refactoring
+  --   'ThePrimeagen/refactoring.nvim',
+  --   dependencies = {
+  --     'nvim-lua/plenary.nvim',
+  --     'nvim-treesitter/nvim-treesitter',
+  --   },
+  --   lazy = false,
+  --   opts = {},
+  -- },
   { -- Ondra: Neovim DAP for debugging
     'mfussenegger/nvim-dap',
     dependencies = {
@@ -1332,11 +1373,11 @@ require('lazy').setup({
     },
     config = function() end,
   },
-  {
-    'mrcjkb/rustaceanvim',
-    version = '^6', -- Recommended
-    lazy = false, -- This plugin is already lazy
-  },
+  -- {
+  --   'mrcjkb/rustaceanvim',
+  --   version = '^6', -- Recommended
+  --   lazy = false, -- This plugin is already lazy
+  -- },
 
   {
     'nvim-neo-tree/neo-tree.nvim',
@@ -1464,7 +1505,7 @@ require('autoclose').setup()
 require('dap-python').test_runner = 'pytest'
 require('dap').set_exception_breakpoints {}
 require('dapui').setup()
-require('refactoring').setup {}
+-- require('refactoring').setup {}
 require('nvim-ts-autotag').setup {
   opts = {
     -- Defaults
