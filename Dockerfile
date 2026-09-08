@@ -37,7 +37,36 @@ RUN curl -L \
     ln -s /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim && \
     rm /tmp/nvim.tar.gz
 
-RUN useradd --create-home --shell /bin/bash dev
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+RUN set -eux; \
+    existing_user="$(getent passwd "${USER_ID}" | cut -d: -f1 || true)"; \
+    existing_group="$(getent group "${GROUP_ID}" | cut -d: -f1 || true)"; \
+    \
+    if [ -n "$existing_group" ]; then \
+        groupmod --new-name dev "$existing_group"; \
+    else \
+        groupadd --gid "${GROUP_ID}" dev; \
+    fi; \
+    \
+    if [ -n "$existing_user" ]; then \
+        usermod \
+            --login dev \
+            --home /home/dev \
+            --move-home \
+            --gid "${GROUP_ID}" \
+            --shell /bin/bash \
+            "$existing_user"; \
+    else \
+        useradd \
+            --uid "${USER_ID}" \
+            --gid "${GROUP_ID}" \
+            --create-home \
+            --home-dir /home/dev \
+            --shell /bin/bash \
+            dev; \
+    fi
 
 RUN git clone https://github.com/Wondrushh/kickstart.nvim \
       /home/dev/.config/nvim && \
